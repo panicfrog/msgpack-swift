@@ -57,7 +57,7 @@ See the [documentation](https://swiftpackageindex.com/fumoboy007/msgpack-swift/d
 
 ### Performance
 
-| Performance Compared to | Other Library |
+| Speed Compared to | Other Library |
 | --- | --- |
 | Up to 3× faster than | [`nnabeyang/swift-msgpack`](https://github.com/nnabeyang/swift-msgpack) |
 | Up to 2× faster than | [`hirotakan/MessagePacker`](https://github.com/hirotakan/MessagePacker) |
