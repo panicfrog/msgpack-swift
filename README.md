@@ -57,10 +57,10 @@ See the [documentation](https://swiftpackageindex.com/fumoboy007/msgpack-swift/d
 
 ### Performance
 
-| Other Library | Compared to This Library |
+| Performance Compared to | Other Library |
 | --- | --- |
-| [`nnabeyang/swift-msgpack`](https://github.com/nnabeyang/swift-msgpack) | Up to 3× slower. |
-| [`hirotakan/MessagePacker`](https://github.com/hirotakan/MessagePacker) | Up to 2× slower. |
-| [`Flight-School/MessagePack`](https://github.com/Flight-School/MessagePack) | Up to 6× slower. |
+| Up to 3× faster than | [`nnabeyang/swift-msgpack`](https://github.com/nnabeyang/swift-msgpack) |
+| Up to 2× faster than | [`hirotakan/MessagePacker`](https://github.com/hirotakan/MessagePacker) |
+| Up to 6× faster than | [`Flight-School/MessagePack`](https://github.com/Flight-School/MessagePack) |
 
 Tested using real-world messages that are involved in high throughput or low latency use cases. Pull requests to [`Benchmarks.swift`](Tests/Benchmarks/Benchmarks.swift) are welcome if you know of similar use cases!
