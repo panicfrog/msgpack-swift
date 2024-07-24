@@ -21,7 +21,9 @@
 // SOFTWARE.
 
 import Foundation
+#if canImport(RegexBuilder)
 import RegexBuilder
+#endif
 
 extension MessagePackTimestamp {
    /// Initializes the timestamp from a string that follows the RFC 3339 Internet date/time format.
@@ -45,81 +47,136 @@ extension MessagePackTimestamp {
       }
    }
 
-   private static func nanosecondsComponent(fromInternetDateTime string: String) -> UInt32 {
-      let nanosecondsDigitCount = 9
-      enum NanosecondsRoundingOperation {
-         case none
-         case upIfNotEven
-         case up
-      }
-
-      let fractionalSecondsRegex = Regex {
-         "."
-
-         TryCapture {
-            Repeat(count: nanosecondsDigitCount) {
-               Optionally(.digit)
+    private static func nanosecondsComponent(fromInternetDateTime string: String) -> UInt32 {
+        let nanosecondsDigitCount = 9
+        enum NanosecondsRoundingOperation {
+            case none
+            case upIfNotEven
+            case up
+        }
+        
+        if #available(iOS 16.0, *) {
+            let fractionalSecondsRegex = Regex {
+                "."
+                
+                TryCapture {
+                    Repeat(count: nanosecondsDigitCount) {
+                        Optionally(.digit)
+                    }
+                } transform: { (fractionalSecondsString) -> UInt32 in
+                    var nanosecondsComponent = UInt32(fractionalSecondsString)!
+                    for _ in fractionalSecondsString.count..<9 {
+                        nanosecondsComponent *= 10
+                    }
+                    return nanosecondsComponent
+                }
+                
+                TryCapture {
+                    ZeroOrMore(.digit)
+                } transform: { (nanosecondsFractionalPart) -> NanosecondsRoundingOperation in
+                    guard !nanosecondsFractionalPart.isEmpty else {
+                        return .none
+                    }
+                    
+                    let firstDigit = nanosecondsFractionalPart.first!
+                    switch firstDigit {
+                    case "0", "1", "2", "3", "4":
+                        return .none
+                        
+                    case "6", "7", "8", "9":
+                        return .up
+                        
+                    case "5":
+                        for digit in nanosecondsFractionalPart.dropFirst() {
+                            switch digit {
+                            case "0":
+                                continue
+                                
+                            default:
+                                return .up
+                            }
+                        }
+                        return .upIfNotEven
+                        
+                    default:
+                        preconditionFailure("Expected digit but found `\(firstDigit)`.")
+                    }
+                }
             }
-         } transform: { (fractionalSecondsString) -> UInt32 in
-            var nanosecondsComponent = UInt32(fractionalSecondsString)!
-            for _ in fractionalSecondsString.count..<9 {
-               nanosecondsComponent *= 10
+            
+            let matches = string.matches(of: fractionalSecondsRegex)
+            precondition(matches.count == 1)
+            let match = matches[0]
+            
+            var (_, nanosecondsComponent, roundingOperation) = match.output
+            
+            switch roundingOperation {
+            case .none:
+                break
+                
+            case .upIfNotEven:
+                if !nanosecondsComponent.isMultiple(of: 2) {
+                    nanosecondsComponent += 1
+                }
+                
+            case .up:
+                nanosecondsComponent += 1
             }
+            
             return nanosecondsComponent
-         }
-
-         TryCapture {
-            ZeroOrMore(.digit)
-         } transform: { (nanosecondsFractionalPart) -> NanosecondsRoundingOperation in
-            guard !nanosecondsFractionalPart.isEmpty else {
-               return .none
+        } else {
+            let pattern = "\\.([0-9]{0,9})([0-9]*)"
+            guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
+                fatalError("Invalid regex pattern")
             }
-
-            let firstDigit = nanosecondsFractionalPart.first!
-            switch firstDigit {
-            case "0", "1", "2", "3", "4":
-               return .none
-
-            case "6", "7", "8", "9":
-               return .up
-
-            case "5":
-               for digit in nanosecondsFractionalPart.dropFirst() {
-                  switch digit {
-                  case "0":
-                     continue
-
-                  default:
-                     return .up
-                  }
-               }
-               return .upIfNotEven
-
-            default:
-               preconditionFailure("Expected digit but found `\(firstDigit)`.")
+            
+            let nsRange = NSRange(string.startIndex..<string.endIndex, in: string)
+            guard let match = regex.firstMatch(in: string, options: [], range: nsRange) else {
+                fatalError("No matches found")
             }
-         }
-      }
-
-      let matches = string.matches(of: fractionalSecondsRegex)
-      precondition(matches.count == 1)
-      let match = matches[0]
-
-      var (_, nanosecondsComponent, roundingOperation) = match.output
-
-      switch roundingOperation {
-      case .none:
-         break
-
-      case .upIfNotEven:
-         if !nanosecondsComponent.isMultiple(of: 2) {
-            nanosecondsComponent += 1
-         }
-
-      case .up:
-         nanosecondsComponent += 1
-      }
-
-      return nanosecondsComponent
-   }
+            
+            let fractionalSecondsString = (string as NSString).substring(with: match.range(at: 1))
+            var nanosecondsComponent = UInt32(fractionalSecondsString) ?? 0
+            for _ in fractionalSecondsString.count..<9 {
+                nanosecondsComponent *= 10
+            }
+            
+            let nanosecondsFractionalPart = (string as NSString).substring(with: match.range(at: 2))
+            let roundingOperation: NanosecondsRoundingOperation
+            if nanosecondsFractionalPart.isEmpty {
+                roundingOperation = .none
+            } else {
+                let firstDigit = nanosecondsFractionalPart.first!
+                switch firstDigit {
+                case "0", "1", "2", "3", "4":
+                    roundingOperation = .none
+                    
+                case "6", "7", "8", "9":
+                    roundingOperation = .up
+                    
+                case "5":
+                    let hasNonZero = nanosecondsFractionalPart.dropFirst().contains { $0 != "0" }
+                    roundingOperation = hasNonZero ? .up : .upIfNotEven
+                    
+                default:
+                    preconditionFailure("Expected digit but found `\(firstDigit)`.")
+                }
+            }
+            
+            switch roundingOperation {
+            case .none:
+                break
+                
+            case .upIfNotEven:
+                if !nanosecondsComponent.isMultiple(of: 2) {
+                    nanosecondsComponent += 1
+                }
+                
+            case .up:
+                nanosecondsComponent += 1
+            }
+            
+            return nanosecondsComponent
+        }
+    }
 }

@@ -25,9 +25,9 @@ var package = Package(
       .visionOS(.v1),
       .macOS(.v13),
       .macCatalyst(.v16),
-      .iOS(.v16),
-      .tvOS(.v16),
-      .watchOS(.v9),
+      .iOS(.v12),
+      .tvOS(.v12),
+      .watchOS(.v5),
    ],
    products: [
       .library(
@@ -66,15 +66,15 @@ var package = Package(
             .define("HAS_REFERENCE_IMPLEMENTATION", .when(platforms: referenceImplementationSupportedPlatforms))
          ]
       ),
-      .testTarget(
-         name: "Benchmarks",
-         dependencies: [
-            .product(name: "Logging", package: "swift-log"),
-            "MessagePack",
-            "MessagePacker",
-            .product(name: "SwiftMsgpack", package: "swift-msgpack"),
-         ]
-      )
+//      .testTarget(
+//         name: "Benchmarks",
+//         dependencies: [
+//            .product(name: "Logging", package: "swift-log"),
+//            "MessagePack",
+//            "MessagePacker",
+//            .product(name: "SwiftMsgpack", package: "swift-msgpack"),
+//         ]
+//      )
    ]
 )
 

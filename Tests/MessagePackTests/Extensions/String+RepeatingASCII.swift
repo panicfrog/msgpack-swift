@@ -29,16 +29,17 @@ import ucrt
 #endif
 
 extension String {
-   init(repeatingASCII character: Character, count: Int) {
-      let asciiValue = character.asciiValue!
+    init(repeatingASCII character: Character, count: Int) {
+        guard let asciiValue = character.asciiValue else {
+            fatalError("Character must be an ASCII value.")
+        }
 
-      self.init(unsafeUninitializedCapacity: count) { buffer in
-         guard let baseAddress = buffer.baseAddress else {
-            return 0
-         }
+        // 创建一个包含 `asciiValue` 的数组
+        let asciiArray = [UInt8](repeating: asciiValue, count: count)
 
-         memset(baseAddress, Int32(asciiValue), count)
-         return count
-      }
-   }
+        // 使用数组创建字符串
+        self = asciiArray.withUnsafeBufferPointer {
+            String(bytes: $0, encoding: .ascii)!
+        }
+    }
 }
